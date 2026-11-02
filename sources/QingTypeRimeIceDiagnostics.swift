@@ -67,6 +67,7 @@ enum QingTypeRimeIceDiagnostics {
       try expect(got && text == "清言星河样词", "personal Rime Ice selection commits exact text")
       checks += try QingTypeInputModeDiagnostics.checkCapsLock(api: api, session: session, profile: "Rime Ice with Shift disabled")
       checks += try QingTypeInputModeDiagnostics.checkEditingKeys(api: api, session: session, profile: "Rime Ice", useShift: settings.useShift)
+      checks += try QingTypeInputModeDiagnostics.checkCandidatePunctuation(api: api, session: session, profile: "Rime Ice", settings: settings)
       try expect(candidates("hello").contains { $0.text.lowercased() == "hello" }, "English dependency is loaded")
       let dates = candidates("rq").map(\.text)
       try expect(dates.contains { $0.range(of: "^20[0-9]{2}-[0-9]{2}-[0-9]{2}$", options: .regularExpression) != nil }, "Lua date translator executes")

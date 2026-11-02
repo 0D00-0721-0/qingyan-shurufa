@@ -122,6 +122,13 @@ final class QingTypeInputController: IMKInputController {
                                                            caps: modifiers.contains(.capsLock))
         if rimeKeycode != 0 {
           let rimeModifiers = SquirrelKeycode.osxModifiersToRime(modifiers: modifiers)
+          if currentSettings.useSystemCandidates,
+             candidatePresenter?.prepareForEngineKey(modifiers: rimeModifiers, highlight: {
+               self.rimeAPI.highlight_candidate(self.session, $0)
+             }) == false {
+            rimeUpdate()
+            return true // Preserve composition rather than commit a different candidate.
+          }
           handled = processKey(rimeKeycode, modifiers: rimeModifiers)
           rimeUpdate()
         }

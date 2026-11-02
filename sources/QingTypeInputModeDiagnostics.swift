@@ -89,6 +89,108 @@ enum QingTypeInputModeDiagnostics {
     return checks
   }
 
+  static func checkCandidatePunctuation(api: RimeApi_stdbool, session: RimeSessionId,
+                                        profile: String, settings: QingTypeSettings) throws -> Int {
+    var checks = 0
+    func expect(_ value: Bool, _ message: String) throws {
+      guard value else { throw SettingsError.invalid("FAIL: \(profile): \(message)") }
+      checks += 1; print("PASS: \(profile): \(message)")
+    }
+    func consume() -> String? {
+      var commit = RimeCommit.rimeStructInit()
+      guard api.get_commit(session, &commit) else { return nil }
+      defer { _ = api.free_commit(&commit) }
+      return commit.text.map { String(cString: $0) }
+    }
+    _ = NSApplication.shared
+    let presenter = QingTypeCandidatePresenter(showsWindow: false, reduceMotion: { true })
+    defer { presenter.hide(); api.clear_composition(session) }
+    func reset() throws -> [QingTypeCandidate] {
+      presenter.hide(); api.clear_composition(session); _ = consume()
+      api.set_option(session, "ascii_mode", false)
+      for key in "ni".utf8 { _ = api.process_key(session, Int32(key), 0) }
+      let candidates = QingTypeCandidateSource.read(api: api, session: session, startingAt: 0)
+      guard candidates.count > settings.pageSize + 2 else { throw SettingsError.invalid("Missing punctuation test candidates") }
+      presenter.update(candidates: candidates, highlighted: 0, settings: settings,
+                       caretRect: NSRect(x: 300, y: 500, width: 1, height: 24), composition: "ni")
+      return candidates
+    }
+    for (key, punctuation, modifiers) in [(XK_comma, "，", UInt32(0)), (XK_question, "？", kShiftMask.rawValue), (XK_exclam, "！", kShiftMask.rawValue)] {
+      let candidates = try reset()
+      _ = presenter.handleKey(code: 125, text: nil)
+      _ = presenter.handleKey(code: 124, text: nil)
+      let selected = presenter.window.selectedIndex
+      let expected = candidates.first { $0.index == selected }!.text
+      var context = RimeContext_stdbool.rimeStructInit()
+      let got = api.get_context(session, &context)
+      let page = context.menu.page_no
+      if got { _ = api.free_context(&context) }
+      try expect(selected == 1 && got && page == 0 && consume() == nil,
+                 "grid navigation changes only the UI before an engine key")
+      guard presenter.prepareForEngineKey(modifiers: modifiers, highlight: { api.highlight_candidate(session, $0) }) else {
+        throw SettingsError.invalid("Cannot synchronize punctuation test selection")
+      }
+      _ = api.process_key(session, key, Int32(modifiers))
+      try expect(consume() == expected + punctuation, "\(punctuation) commits the visible arrow-selected candidate")
+      try expect((api.get_input(session).map { String(cString: $0) } ?? "").isEmpty && consume() == nil,
+                 "punctuation clears composition without a second commit")
+    }
+    let candidates = try reset()
+    presenter.expand()
+    let later = candidates[settings.pageSize + 1]
+    presenter.window.highlight(later.index)
+    let body = presenter.window.bodyIdentity
+    let frames = presenter.window.allCellFrames
+    try expect(presenter.prepareForEngineKey(modifiers: kShiftMask.rawValue, highlight: { api.highlight_candidate(session, $0) }),
+               "an implicit commit can synchronize a candidate beyond the engine page")
+    try expect(presenter.window.bodyIdentity == body && presenter.window.allCellFrames == frames &&
+               presenter.window.selectedIndex == later.index,
+               "last-moment synchronization does not rebuild or move the visible grid")
+    _ = api.process_key(session, Int32(XK_question), Int32(kShiftMask.rawValue))
+    try expect(consume() == later.text + "？", "a later-page hovered candidate is preserved by punctuation")
+    let compact = try reset()
+    presenter.window.highlight(compact[1].index)
+    try expect(presenter.prepareForEngineKey(modifiers: 0, highlight: { api.highlight_candidate(session, $0) }),
+               "collapsed hover selection also synchronizes before an implicit commit")
+    _ = api.process_key(session, Int32(XK_comma), 0)
+    try expect(consume() == compact[1].text + "，", "collapsed punctuation matches the hovered candidate")
+    let periodCandidates = try reset(); presenter.window.highlight(1)
+    guard presenter.prepareForEngineKey(modifiers: 0, highlight: { api.highlight_candidate(session, $0) }) else {
+      throw SettingsError.invalid("Cannot prepare period binding test")
+    }
+    _ = api.process_key(session, Int32(XK_period), 0)
+    let periodCommit = consume()
+    var periodContext = RimeContext_stdbool.rimeStructInit()
+    let hasPeriodContext = api.get_context(session, &periodContext)
+    let periodPage = periodContext.menu.page_no
+    if hasPeriodContext { _ = api.free_context(&periodContext) }
+    if settings.schema == "rime_ice" {
+      try expect(periodCommit == periodCandidates[1].text + "。", "Rime Ice keeps its configured period commit")
+    } else {
+      try expect(periodCommit == nil && hasPeriodContext && periodPage == 1 &&
+                 api.get_input(session).map({ String(cString: $0) }) == "ni",
+                 "the base schema keeps period as Page Down without committing input")
+    }
+    _ = try reset(); presenter.window.highlight(1)
+    var calls = 0
+    for modifiers in [kControlMask.rawValue, kAltMask.rawValue, kSuperMask.rawValue, kReleaseMask.rawValue] {
+      let ready = presenter.prepareForEngineKey(modifiers: modifiers) { _ in calls += 1; return true }
+      try expect(ready && calls == 0, "host shortcut or release event leaves engine highlight untouched")
+    }
+    try expect(!presenter.prepareForEngineKey(modifiers: 0, highlight: { _ in false }) && consume() == nil,
+               "failed synchronization prevents an implicit commit of another candidate")
+    try expect(presenter.prepareForEngineKey(modifiers: 0, highlight: { api.highlight_candidate(session, $0) }),
+               "a failed synchronization can be retried without consuming composition")
+    api.set_caret_pos(session, 1)
+    let key = QingTypeKeyboardInput.prepare(api: api, session: session, key: UInt32(XK_Return), modifiers: 0)
+    _ = api.process_key(session, Int32(key), 0)
+    try expect(consume() == "ni", "collapsed Return still commits all raw letters after UI selection")
+    presenter.hide()
+    try expect(presenter.prepareForEngineKey(modifiers: 0, highlight: { _ in false }),
+               "a hidden or empty presenter has no selection to synchronize")
+    return checks
+  }
+
   static func checkEditingKeys(api: RimeApi_stdbool, session: RimeSessionId,
                                profile: String, useShift: Bool) throws -> Int {
     var checks = 0

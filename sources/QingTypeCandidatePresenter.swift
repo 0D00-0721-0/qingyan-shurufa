@@ -64,6 +64,17 @@ final class QingTypeCandidatePresenter {
     return handleKey(code: event.keyCode, text: event.charactersIgnoringModifiers)
   }
 
+  func prepareForEngineKey(modifiers: UInt32, highlight: (Int) -> Bool) -> Bool {
+    let passThrough = kReleaseMask.rawValue | kControlMask.rawValue | kAltMask.rawValue | kSuperMask.rawValue
+    guard modifiers & passThrough == 0, !candidates.isEmpty, highlighted != engineHighlight else { return true }
+    guard candidates.contains(where: { $0.index == highlighted }), highlight(highlighted) else { return false }
+    // Hover and grid navigation stay local. Synchronize only immediately before
+    // Rime handles a key, so implicit commits use the visible selection without
+    // changing the displayed page while the user is browsing it.
+    engineHighlight = highlighted
+    return true
+  }
+
   func handleKey(code: UInt16, text: String?) -> Bool {
     guard !candidates.isEmpty else { return false }
     switch code {

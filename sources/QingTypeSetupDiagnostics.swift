@@ -34,6 +34,7 @@ enum QingTypeSetupDiagnostics {
       try expect(got && text == "你好", "factory selection commits exact Chinese text")
       checks += try QingTypeInputModeDiagnostics.checkCapsLock(api: api, session: session, profile: "factory")
       checks += try QingTypeInputModeDiagnostics.checkEditingKeys(api: api, session: session, profile: "factory", useShift: settings.useShift)
+      checks += try QingTypeInputModeDiagnostics.checkCandidatePunctuation(api: api, session: session, profile: "factory", settings: settings)
       let saved = try QingTypeSettings.load(from: root)
       try expect(saved.rimeIce == nil && saved.models.isEmpty && saved.dictionaries.isEmpty && saved.useSystemCandidates,
                  "first use leaves optional components absent and native candidates enabled")
