@@ -90,11 +90,15 @@ enum QingTypeDownloads {
     return try await download(asset: asset, repository: repository, release: release.tag_name, limit: limit, progress: progress)
   }
 
+  static func validateDownload(_ asset: QingTypeRelease.Asset, repository: String, limit: Int64) throws -> String {
+    guard ["iDvel/rime-ice", "amzxyz/rime-wanxiang-data", QingTypeAppUpdates.repository].contains(repository),
+          asset.name == URL(fileURLWithPath: asset.name).lastPathComponent else { throw SettingsError.invalid("未知的下载来源。") }
+    return try asset.validate(repository: repository, limit: limit)
+  }
+
   static func download(asset: QingTypeRelease.Asset, repository: String, release: String, limit: Int64,
                        progress: @escaping @Sendable (QingTypeTransferProgress) -> Void = { _ in }) async throws -> QingTypeDownloadedAsset {
-    guard ["iDvel/rime-ice", "amzxyz/rime-wanxiang-data", "0D00-0721-0/qingtype"].contains(repository),
-          asset.name == URL(fileURLWithPath: asset.name).lastPathComponent else { throw SettingsError.invalid("未知的下载来源。") }
-    let hash = try asset.validate(repository: repository, limit: limit)
+    let hash = try validateDownload(asset, repository: repository, limit: limit)
     let configuration = URLSessionConfiguration.ephemeral
     configuration.timeoutIntervalForRequest = 60
     configuration.timeoutIntervalForResource = 1800

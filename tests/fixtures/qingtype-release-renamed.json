@@ -1,0 +1,16 @@
+[
+  {
+    "tag_name": "v0.6.5-preview.1",
+    "draft": false,
+    "prerelease": true,
+    "html_url": "https://github.com/0D00-0721-0/qingyan-shurufa/releases/tag/v0.6.5-preview.1",
+    "assets": [
+      {
+        "name": "QingType-0.6.5-arm64.dmg",
+        "browser_download_url": "https://github.com/0D00-0721-0/qingyan-shurufa/releases/download/v0.6.5-preview.1/QingType-0.6.5-arm64.dmg",
+        "size": 17219084,
+        "digest": "sha256:4f49c8323b12dec9880ddaf90697eb4bffe72e1368d28e79a4f144ef6a0a52c4"
+      }
+    ]
+  }
+]

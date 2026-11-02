@@ -59,9 +59,9 @@ struct MaintenanceTests {
     func release(_ version: String, draft: Bool = false, architecture: String = "arm64") -> QingTypeAppRelease {
       let tag = "v\(version)-preview.1"
       return .init(tag_name: tag, draft: draft, prerelease: true,
-                   html_url: URL(string: "https://github.com/0D00-0721-0/qingtype/releases/tag/\(tag)")!,
+                   html_url: URL(string: "https://github.com/0D00-0721-0/qingyan-shurufa/releases/tag/\(tag)")!,
                    assets: [.init(name: "QingType-\(version)-\(architecture).dmg",
-                                  browser_download_url: URL(string: "https://github.com/0D00-0721-0/qingtype/releases/download/\(tag)/QingType-\(version)-\(architecture).dmg")!,
+                                  browser_download_url: URL(string: "https://github.com/0D00-0721-0/qingyan-shurufa/releases/download/\(tag)/QingType-\(version)-\(architecture).dmg")!,
                                   size: 100, digest: "sha256:" + String(repeating: "a", count: 64))])
     }
     try expect(QingTypeAppUpdates.choose([release("0.6.9"), release("0.6.10")], architecture: "arm64")?.version == "0.6.10", "numeric release ordering selects 0.6.10 after 0.6.9")
@@ -73,6 +73,32 @@ struct MaintenanceTests {
     try expect(QingTypeAppUpdates.choose([external], architecture: "arm64") == nil, "update downloads are restricted to the QingType repository")
     var badTag = release("0.6.0"); badTag.tag_name = "main"
     try expect(QingTypeAppUpdates.choose([badTag], architecture: "arm64") == nil, "non-version release tags cannot install programs")
+    let captured = try JSONDecoder().decode([QingTypeAppRelease].self,
+      from: Data(contentsOf: URL(fileURLWithPath: "tests/fixtures/qingtype-release-renamed.json")))
+    try expect(QingTypeAppUpdates.choose(captured, architecture: "arm64")?.tag == "v0.6.5-preview.1",
+               "actual canonical GitHub metadata remains selectable after the repository rename")
+    let capturedAsset = captured[0].assets[0]
+    try expect(try QingTypeDownloads.validateDownload(capturedAsset, repository: QingTypeAppUpdates.repository,
+                                                      limit: QingTypeAppUpdates.downloadLimit) == String(capturedAsset.digest!.dropFirst(7)),
+               "the selected renamed-repository asset also passes the production download gate")
+    for repository in ["someone/qingyan-shurufa", "0D00-0721-0/qingyan-shurufa-extra", "0D00-0721-0/qingtype"] {
+      var unsupported = captured[0]
+      unsupported.html_url = URL(string: "https://github.com/\(repository)/releases/tag/\(unsupported.tag_name)")!
+      unsupported.assets[0].browser_download_url = URL(string: "https://github.com/\(repository)/releases/download/\(unsupported.tag_name)/\(capturedAsset.name)")!
+      try expect(QingTypeAppUpdates.choose([unsupported], architecture: "arm64") == nil,
+                 "a different owner, similar name or obsolete repository cannot supply an app update")
+      try rejects {
+        _ = try QingTypeDownloads.validateDownload(unsupported.assets[0], repository: repository,
+                                                   limit: QingTypeAppUpdates.downloadLimit)
+      }
+    }
+    for repository in ["iDvel/rime-ice", "amzxyz/rime-wanxiang-data"] {
+      let component = QingTypeRelease.Asset(name: "component.zip",
+        browser_download_url: URL(string: "https://github.com/\(repository)/releases/download/latest/component.zip")!,
+        size: 100, digest: "sha256:" + String(repeating: "a", count: 64))
+      try expect(try QingTypeDownloads.validateDownload(component, repository: repository, limit: 100) == String(repeating: "a", count: 64),
+                 "the existing optional-component download source remains allowed")
+    }
     try expect(!QingTypeMaintenancePreferences().checkUpdatesOnLaunch, "factory first launch does not contact the update service")
     var privateSettings = QingTypeSettings()
     privateSettings.personalWords = [.init(text: "PRIVATE_WORD_DO_NOT_EXPORT", pinyin: "ce shi", weight: 100)]

@@ -37,7 +37,7 @@ struct QingTypeMaintenancePreferences: Codable {
 }
 
 enum QingTypeAppUpdates {
-  static let repository = "0D00-0721-0/qingtype"
+  static let repository = "0D00-0721-0/qingyan-shurufa"
   static let downloadLimit: Int64 = 256 * 1024 * 1024
   static var architecture: String {
     #if arch(arm64)
