@@ -1,5 +1,10 @@
 #!/bin/bash
 set -euo pipefail
+package_failure() {
+  printf '打包失败（退出码 %s，行 %s）：%s\n' "$1" "$2" "$3" >&2
+  exit "$1"
+}
+trap 'package_failure "$?" "$LINENO" "$BASH_COMMAND"' ERR
 cd "$(dirname "$0")/.."
 input_app="$PWD/build/QingType.app"
 version=$(python3 scripts/version.py read)
@@ -51,7 +56,7 @@ if [[ "$identity" == "-" ]]; then
   echo '此构建为本地预览版，采用临时签名，尚未完成 Developer ID 签名与 Apple 公证。' >> "$stage/安装说明.txt"
 fi
 rm -f "$image"
-hdiutil create -quiet -volname "清言 $version" -srcfolder "$stage" -format UDZO "$image"
+hdiutil create -volname "清言 $version" -srcfolder "$stage" -format UDZO "$image"
 if [[ "$identity" != "-" ]]; then codesign --force --timestamp --sign "$identity" "$image"; fi
 (cd "$distribution" && shasum -a 256 "$(basename "$image")" > "$(basename "$image").sha256")
 echo "已生成：$image"
