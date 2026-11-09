@@ -84,6 +84,24 @@ struct MetadataRequestTests {
     MetadataProtocol.configure { $0.respond(200) }
     try expect(try await release().tag_name == "LTS", "a cancelled check does not poison the next attempt")
 
+    let checkDirectory = FileManager.default.temporaryDirectory.appendingPathComponent("qingtype-ice-metadata-\(UUID())")
+    try FileManager.default.createDirectory(at: checkDirectory, withIntermediateDirectories: false)
+    defer { try? FileManager.default.removeItem(at: checkDirectory) }
+    let checksum = String(repeating: "a", count: 64)
+    let iceMetadata = Data("""
+      {"tag_name":"nightly","assets":[{"name":"full.zip","size":1024,"digest":"sha256:\(checksum)",
+      "updated_at":"2026-10-31T12:01:58Z","browser_download_url":"https://github.com/iDvel/rime-ice/releases/download/nightly/full.zip"}]}
+      """.utf8)
+    MetadataProtocol.configure { request in
+      if request.request.url?.path == "/repos/iDvel/rime-ice/releases/latest" { request.respond(200, data: iceMetadata) }
+      else { request.respond(500) }
+    }
+    let ice = try await QingTypeRimeIceUpdates.check(installed: nil, directory: checkDirectory, session: session)
+    try expect(!ice.upToDate && ice.asset.size == 1024 && ice.sha256 == checksum && ice.updatedAt != nil,
+               "Rime Ice check returns the exact downloadable asset, size, checksum and publication time")
+    try expect(try FileManager.default.contentsOfDirectory(atPath: checkDirectory.path).isEmpty,
+               "Rime Ice metadata check creates no resources or backup")
+
     let file = FileManager.default.temporaryDirectory.appendingPathComponent("qingtype-hash-cancel-\(UUID())")
     try Data("isolated hash cancellation fixture".utf8).write(to: file)
     defer { try? FileManager.default.removeItem(at: file) }

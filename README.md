@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/0D00-0721-0/qingyan-shurufa/releases/latest">下载最新预览版</a> ·
+  <a href="https://github.com/0D00-0721-0/qingyan-shurufa/releases">下载最新预览版</a> ·
   <a href="https://github.com/0D00-0721-0/qingyan-shurufa/issues/new">反馈问题 / 提交建议</a> ·
   <a href="docs/INSTALLATION.md">安装指南</a>
 </p>
@@ -21,11 +21,11 @@
 
 **QingType（清言）** 是一款基于 [Rime](https://rime.im/) 与 [鼠须管 Squirrel](https://github.com/rime/squirrel) 的开源 macOS 中文输入法。它通过原生 macOS 界面，把输入方案、词库、学习数据和本地语言模型的常用管理流程整合起来。
 
-> **当前版本：0.6.5 预览版。** 目前仅支持 Apple Silicon（M 系列）Mac，要求 macOS 14 或更高版本。项目仍在持续验证中；下载前请阅读下方的预览版说明和已知限制。
+> **当前源码版本为 0.6.6。** 预览版支持 Apple Silicon（M 系列）Mac，要求 macOS 14 或更高版本。下载前请阅读预览版说明和已知限制。
 
 ## 下载与安装
 
-<https://github.com/0D00-0721-0/qingyan-shurufa/releases/latest>
+[查看 GitHub 预览版](https://github.com/0D00-0721-0/qingyan-shurufa/releases)
 
 1. 在 Releases 页面下载 DMG 安装包（普通用户请下载 Assets 中的安装包，不要下载 Source code）。
 2. 打开 DMG，将「清言.app」拖入「应用程序」文件夹。
@@ -52,6 +52,7 @@
 | --- | --- |
 | 原生 macOS 体验 | 基于 Rime/Squirrel，提供原生设置与管理界面 |
 | 拼音输入方案 | 内置全拼简体、全拼繁体和小鹤双拼简体 |
+| [模糊拼音](docs/FUZZY_PINYIN.md) | 在输入设置中逐组选择平翘舌、n/l、f/h 与前后鼻音，支持内置方案和雾凇，默认关闭 |
 | 雾凇拼音 | 在应用内下载安装、导入和管理雾凇方案 |
 | 个人词库 | 新增、编辑、删除、搜索、排序、去重，支持 CSV/TSV/TXT 导入与导出 |
 | 自动学习 | 使用 Rime 用户词典调整候选排序，支持备份、导出、合并恢复和重置 |

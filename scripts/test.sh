@@ -21,6 +21,8 @@ swiftc -parse-as-library -swift-version 5 sources/InputSource.swift shared/*.swi
 build/input-source-query-tests
 swiftc -parse-as-library -swift-version 5 shared/*.swift tests/SettingsSafetyTests.swift "${yaml_flags[@]}" -o build/settings-tests
 build/settings-tests
+swiftc -parse-as-library -swift-version 5 shared/*.swift tests/FuzzyPinyinTests.swift "${yaml_flags[@]}" -o build/fuzzy-pinyin-tests
+build/fuzzy-pinyin-tests
 swiftc -parse-as-library -swift-version 5 shared/*.swift tests/ContentTests.swift "${yaml_flags[@]}" -o build/content-tests
 swiftc -parse-as-library -swift-version 5 shared/*.swift tests/RuntimeModelTests.swift "${yaml_flags[@]}" -o build/runtime-model-tests
 build/runtime-model-tests
@@ -54,6 +56,7 @@ build/content-tests
 build/QingType.app/Contents/MacOS/QingType --engine-smoke-test
 build/QingType.app/Contents/MacOS/QingType --factory-engine-test
 build/QingType.app/Contents/MacOS/QingType --personal-dictionary-engine-test
+build/QingType.app/Contents/MacOS/QingType --fuzzy-pinyin-engine-test
 if [[ -n "${QINGTYPE_RIME_ICE_TEST_PACKAGE:-}" ]]; then
   build/QingType.app/Contents/MacOS/QingType --rime-ice-engine-test "$QINGTYPE_RIME_ICE_TEST_PACKAGE"
 else
@@ -77,6 +80,7 @@ assert not any(key.startswith('SU') for key in info)
 assert (app / 'Applications/QingType Settings.app/Contents/MacOS/QingTypeSettings').is_file()
 settings_info = plistlib.loads((app / 'Applications/QingType Settings.app/Contents/Info.plist').read_bytes())
 assert settings_info['CFBundleShortVersionString'] == info['CFBundleShortVersionString']
+assert settings_info.get('LSUIElement') is True, 'Settings must be able to show windows without a Dock icon'
 assert json.loads(Path('build/input-source-status.json').read_text())['controllerClassFound']
 print('PASS: input source identity, settings bundle, and update isolation')
 PY

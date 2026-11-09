@@ -67,6 +67,10 @@ struct SquirrelApp {
       if CommandLine.arguments.contains("--factory-engine-test") {
         return QingTypeSetupDiagnostics.run(api: rimeAPI)
       }
+      if CommandLine.arguments.contains("--fuzzy-pinyin-engine-test") {
+        let package = ProcessInfo.processInfo.environment["QINGTYPE_RIME_ICE_TEST_PACKAGE"].map { URL(fileURLWithPath: $0) }
+        return QingTypeFuzzyPinyinDiagnostics.run(api: rimeAPI, package: package)
+      }
       if CommandLine.arguments.contains("--candidate-ui-test") {
         return QingTypeDiagnostics.runCandidateTests()
       }

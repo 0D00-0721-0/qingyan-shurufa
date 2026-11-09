@@ -37,5 +37,5 @@ settings_info = dict(CFBundleIdentifier='org.qingtype.settings', CFBundleExecuta
                      CFBundleName='清言设置', CFBundleDisplayName='清言设置', CFBundleVersion=version,
                      CFBundleShortVersionString=version, CFBundlePackageType='APPL',
                      CFBundleIconFile='QingType.icns', NSPrincipalClass='NSApplication',
-                     NSHighResolutionCapable=True, LSMinimumSystemVersion='14.0')
+                     NSHighResolutionCapable=True, LSMinimumSystemVersion='14.0', LSUIElement=True)
 (settings / 'Contents/Info.plist').write_bytes(plistlib.dumps(settings_info))

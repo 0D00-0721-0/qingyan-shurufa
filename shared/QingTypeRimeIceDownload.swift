@@ -8,8 +8,9 @@ struct RimeIceDownload {
 }
 
 enum QingTypeRimeIceDownload {
-  static func official(progress: @escaping @Sendable (QingTypeTransferProgress) -> Void = { _ in }) async throws -> RimeIceDownload {
-    let downloaded = try await QingTypeDownloads.download(repository: "iDvel/rime-ice", tag: "latest", filename: "full.zip", limit: 128 * 1024 * 1024, progress: progress)
+  static func official(_ update: QingTypeRimeIceUpdate, progress: @escaping @Sendable (QingTypeTransferProgress) -> Void) async throws -> RimeIceDownload {
+    let downloaded = try await QingTypeDownloads.download(asset: update.asset, repository: QingTypeRimeIceUpdates.repository,
+      release: update.release, limit: QingTypeRimeIceUpdates.downloadLimit, progress: progress)
     do {
       let root = try extract(downloaded.file, to: downloaded.directory.appendingPathComponent("package"))
       return RimeIceDownload(directory: downloaded.directory, root: root,

@@ -40,6 +40,12 @@ GitHub Releases; this does not represent Apple notarization or stable-release ac
 - **Yams 5.0.6**: MIT, pinned to
   `0d9ee7ea8c4ebd4a489ad7a73d5c6cad55d6fed3` in `dependencies/Package.resolved`.
   Its license and libyaml's MIT notice are bundled with both applications.
+- **Fuzzy pinyin**: the native grouped settings were informed by Fcitx5 macOS
+  and Squirrel Panel. Spellings use Rime's existing derivation algebra, with
+  reference to [Rime's LGPL-3.0 pinyin rules](https://github.com/rime/rime-luna-pinyin/blob/master/pinyin.yaml)
+  and [Rime Ice's GPL-3.0 scheme](https://github.com/iDvel/rime-ice/blob/main/rime_ice.schema.yaml).
+  QingType implements its own preferences, ordered patch insertion and tests;
+  no additional engine, library or downloaded package is bundled for this feature.
 - **Wanxiang model**: optional official download or local import, not bundled.
   The former RIME-LMDG repository now resolves to
   [amzxyz/rime-wanxiang-data](https://github.com/amzxyz/rime-wanxiang-data), whose

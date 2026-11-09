@@ -3,9 +3,9 @@
 0.4.0 提供正常的「清言.app」与 DMG 安装包。应用内带有输入服务、Rime 运行库、
 基础词典与全拼/小鹤方案，用户不需要预装鼠须管或运行终端命令。
 
-[GitHub 预览版下载](https://github.com/0D00-0721-0/qingtype/releases)。下载 Assets 中的 DMG，另附 SHA-256 文件。
+[GitHub 预览版下载](https://github.com/0D00-0721-0/qingyan-shurufa/releases)。下载 Assets 中的 DMG，另附 SHA-256 文件。
 
-1. 打开 `QingType-0.6.5-arm64.dmg`，将「清言.app」拖入「Applications」。
+1. 打开 `QingType-0.6.6-arm64.dmg`，将「清言.app」拖入「Applications」。
 2. 打开清言，在「开始使用」点击「安装并启用清言」。
 3. 完成后点击「切换到清言」，或从系统输入菜单选择清言。
 4. 可以直接开始中文输入，也可以选择下面的增强组件。
@@ -15,13 +15,14 @@
 安装服务将输入法放入当前用户的 `~/Library/Input Methods/QingType.app`，
 注册并启用输入源、生成默认配置、编译和检查候选。正常应用与后台输入服务采用不同标识。
 输入菜单中的设置入口会优先打开已安装且版本相容的正常应用，缺失时使用内置设置。
+也可以从访达打开「清言.app」。设置窗口不占用 Dock 图标。
 若系统要求手动添加输入源，会保留已经部署通过的程序，并从欢迎页引导打开键盘设置添加清言；部分已运行的浏览器可能需要完整重开。不会将“系统尚未启用”误报成已经可以切换。
 
 ## 可选组件
 
 | 组件 | 安装入口 | 安装后的行为 |
 | --- | --- | --- |
-| 雾凇拼音完整方案 | 开始使用 → 安装并使用雾凇 | 下载官方完整包，校验并部署，启用雾凇；候选窗继续使用清言 |
+| 雾凇拼音完整方案 | 开始使用 → 安装并使用雾凇 | 下载官方完整包，校验并部署，启用雾凇。已有方案可在「输入 → 雾凇拼音」检查更新，再确认下载安装 |
 | 万象语言模型 | 首次「下载安装并启用万象」；已有模型「检查模型更新」 | 按方案选择简体/繁体 LTS；相同哈希校验通过则跳过下载与部署，有新内容才下载并启用 |
 
 两项都可以跳过，万象也可以配合内置全拼/双拼单独使用。软件不会在首次启动时自动下载增强组件。
@@ -78,7 +79,7 @@ GitHub 承载下载，macOS 则独立执行应用信任检查，首次打开可�
 ```sh
 QINGTYPE_SIGN_IDENTITY='Developer ID Application: ...' ./scripts/package-app.sh
 QINGTYPE_NOTARY_PROFILE='your-keychain-profile' \
-  ./scripts/notarize-app.sh build/distribution/QingType-0.6.5-arm64.dmg
+  ./scripts/notarize-app.sh build/distribution/QingType-0.6.6-arm64.dmg
 ```
 
 这些正式签名/公证分支尚未在真实身份上验证。公开发布前还需通过第三方授权审计、

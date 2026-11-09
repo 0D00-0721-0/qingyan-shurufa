@@ -6,6 +6,10 @@ struct QingTypeRimeIceUpdate {
   var sha256: String
   var installedVersion: String?
   var upToDate: Bool
+
+  var updatedAt: Date? {
+    asset.updated_at.flatMap { ISO8601DateFormatter().date(from: $0) }
+  }
 }
 
 /// Checks the official package before downloading it. The installed archive
@@ -14,6 +18,15 @@ enum QingTypeRimeIceUpdates {
   static let repository = "iDvel/rime-ice"
   static let filename = "full.zip"
   static let downloadLimit: Int64 = 128 * 1024 * 1024
+
+  static func check(installed: RimeIceAsset?, directory: URL, session: URLSession? = nil) async throws -> QingTypeRimeIceUpdate {
+    let release = try await QingTypeDownloads.release(repository: repository, tag: "latest", session: session)
+    try Task.checkCancellation()
+    let worker = Task.detached(priority: .utility) {
+      try inspect(release: release, installed: installed, directory: directory)
+    }
+    return try await withTaskCancellationHandler(operation: { try await worker.value }, onCancel: { worker.cancel() })
+  }
 
   static func inspect(release: QingTypeRelease, installed: RimeIceAsset?, directory: URL) throws -> QingTypeRimeIceUpdate {
     guard let asset = release.assets.first(where: { $0.name == filename }) else {

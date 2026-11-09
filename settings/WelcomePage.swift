@@ -71,10 +71,10 @@ extension SettingsModel {
     guard !isDirty else { failed = true; message = "请先保存当前更改，再安装万象模型。"; return }
     let original = saved
     busy = true; failed = false; canCancelDownload = true
-    checkingModelUpdate = true
+    checkingComponentUpdate = true
     transferProgress = nil; message = "正在检查万象模型更新…"
     componentTask = Task {
-      defer { busy = false; checkingModelUpdate = false; canCancelDownload = false; transferProgress = nil; componentTask = nil }
+      defer { busy = false; checkingComponentUpdate = false; canCancelDownload = false; transferProgress = nil; componentTask = nil }
       var downloaded: QingTypeDownloadedAsset?
       defer { if let downloaded { try? FileManager.default.removeItem(at: downloaded.directory) } }
       do {
@@ -85,7 +85,7 @@ extension SettingsModel {
           message = "已安装的万象模型已是官方最新版本，无需下载。"
           return
         }
-        checkingModelUpdate = false; message = "正在下载万象模型…"
+        checkingComponentUpdate = false; message = "正在下载万象模型…"
         downloaded = try await QingTypeWanxiang.download(update) { [self] progress in
           Task { @MainActor in if self.canCancelDownload { self.transferProgress = progress; self.message = "正在下载万象模型…" } }
         }
@@ -116,7 +116,7 @@ extension SettingsModel {
           : "万象模型已启用，并移除了 \(superseded.count) 个旧官方版本。"
       } catch {
         if Task.isCancelled || (error as? URLError)?.code == .cancelled {
-          message = checkingModelUpdate ? "已取消模型更新检查。" : "已取消下载，当前输入设置保持不变。"
+          message = checkingComponentUpdate ? "已取消模型更新检查。" : "已取消下载，当前输入设置保持不变。"
         }
         else { failed = true; message = error.localizedDescription }
       }

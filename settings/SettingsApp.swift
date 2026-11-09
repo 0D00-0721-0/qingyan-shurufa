@@ -34,7 +34,8 @@ final class SettingsModel: ObservableObject {
   var uninstallRefreshGeneration = 0
   @Published var transferProgress: QingTypeTransferProgress?
   @Published var canCancelDownload = false
-  @Published var checkingModelUpdate = false
+  @Published var checkingComponentUpdate = false
+  @Published var pendingRimeIceUpdate: QingTypeRimeIceUpdate?
   @Published var learningSummary = "正在读取本机学习数据…"
   @Published var maintenance = QingTypeMaintenancePreferences()
   @Published var appUpdate: QingTypeAppUpdate?
@@ -249,7 +250,7 @@ struct SettingsView: View {
               Text("\(ByteCountFormatter.string(fromByteCount: progress.received, countStyle: .file)) / \(ByteCountFormatter.string(fromByteCount: progress.total, countStyle: .file))")
                 .font(.caption).monospacedDigit().foregroundStyle(.secondary)
             } else { Spacer() }
-            Button(model.checkingModelUpdate ? "取消检查" : "取消下载") { model.componentTask?.cancel() }
+            Button(model.checkingComponentUpdate ? "取消检查" : "取消下载") { model.componentTask?.cancel() }
           }.padding(.horizontal, 16).padding(.top, 10)
         }
         HStack {
@@ -312,6 +313,7 @@ struct SettingsView: View {
         }
         Stepper("每页候选数：\(model.settings.pageSize)", value: $model.settings.pageSize, in: 3...9)
       }
+      FuzzyPinyinSection(settings: $model.settings.fuzzyPinyin)
       RimeIceSection(model: model)
       Section("试打") {
         TextField("切换到清言，在这里输入拼音", text: $model.sampleText, axis: .vertical)

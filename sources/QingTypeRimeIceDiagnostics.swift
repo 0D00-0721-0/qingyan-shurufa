@@ -50,7 +50,18 @@ enum QingTypeRimeIceDiagnostics {
         for key in input.utf8 { _ = api.process_key(session, Int32(key), 0) }
         return QingTypeCandidateSource.read(api: api, session: session, startingAt: 0, limit: 128)
       }
-      try save(); try deploy()
+      try save()
+      // Give the shared patch a distinct timestamp so the test detects an
+      // unnecessary rewrite even when both saves happen within one second.
+      try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSince1970: 1_700_000_000)],
+        ofItemAtPath: directory.appendingPathComponent("default.custom.yaml").path)
+      try deploy()
+      let dependencyPrisms = ["melt_eng", "radical_pinyin"].map {
+        directory.appendingPathComponent("build/\($0).prism.bin").path
+      }
+      let originalPrismDates = try dependencyPrisms.map {
+        try FileManager.default.attributesOfItem(atPath: $0)[.modificationDate] as? Date
+      }
       try expect(candidates("nihao").contains { $0.text == "你好" }, "official Chinese dictionary produces nihao candidates")
       var context = RimeContext_stdbool.rimeStructInit()
       let gotContext = api.get_context(session, &context)
@@ -77,6 +88,15 @@ enum QingTypeRimeIceDiagnostics {
       api.initialize(nil); initialized = true; session = api.create_session()
       _ = api.select_schema(session, "rime_ice")
       try expect(candidates("qingyanxingheyangci").contains { $0.text == "清言星河样词" }, "personal entries remain after engine restart")
+      stop()
+      settings.phrases[0].text = "清言更新短语"
+      try save(); try deploy()
+      let updatedPrismDates = try dependencyPrisms.map {
+        try FileManager.default.attributesOfItem(atPath: $0)[.modificationDate] as? Date
+      }
+      try expect(originalPrismDates.allSatisfy { $0 != nil } && originalPrismDates == updatedPrismDates,
+                 "phrase-only saves reuse both Rime Ice dependency prisms")
+      try expect(candidates("qqing").first?.text == "清言更新短语", "a phrase-only save updates the first candidate after redeployment")
       stop()
       settings.personalWords = []
       try save(); try deploy()

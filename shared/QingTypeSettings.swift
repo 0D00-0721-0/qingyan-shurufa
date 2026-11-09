@@ -26,6 +26,7 @@ struct QingTypeSettings: Codable, Equatable {
   var inlinePreedit = true
   var useShift = true
   var learningEnabled = true
+  var fuzzyPinyin = QingTypeFuzzyPinyin()
   var phrases: [QuickPhrase] = []
   var personalWords: [PersonalWord] = []
   var useSystemCandidates = true
@@ -40,7 +41,7 @@ struct QingTypeSettings: Codable, Equatable {
 
   enum CodingKeys: String, CodingKey {
     case schema, layout, fontSize, pageSize, inlinePreedit, useShift, learningEnabled, phrases, personalWords
-    case useSystemCandidates, dictionaries, models, activeModelID, rimeIce
+    case useSystemCandidates, dictionaries, models, activeModelID, rimeIce, fuzzyPinyin
   }
 
   init(from decoder: Decoder) throws {
@@ -53,6 +54,7 @@ struct QingTypeSettings: Codable, Equatable {
     inlinePreedit = try values.decodeIfPresent(Bool.self, forKey: .inlinePreedit) ?? inlinePreedit
     useShift = try values.decodeIfPresent(Bool.self, forKey: .useShift) ?? useShift
     learningEnabled = try values.decodeIfPresent(Bool.self, forKey: .learningEnabled) ?? true
+    fuzzyPinyin = try values.decodeIfPresent(QingTypeFuzzyPinyin.self, forKey: .fuzzyPinyin) ?? QingTypeFuzzyPinyin()
     phrases = try values.decodeIfPresent([QuickPhrase].self, forKey: .phrases) ?? []
     personalWords = try (values.decodeIfPresent([PersonalWord].self, forKey: .personalWords) ?? []).map { try $0.normalized() }
     useSystemCandidates = try values.decodeIfPresent(Bool.self, forKey: .useSystemCandidates) ?? true
@@ -190,6 +192,11 @@ struct QingTypeSettings: Codable, Equatable {
         patch["grammar/collocation_prism"] = prism + ".prism"
         patch["translator/contextual_suggestions"] = false
       }
+      // The simplified schema inherits luna_pinyin including its custom patch.
+      // Insert once on the parent; inserting again here would duplicate rules.
+      if schemaID != "luna_pinyin_simp" {
+        for (key, rule) in fuzzyPinyin.schemaPatch { patch[key] = rule }
+      }
       files[schemaID + ".custom.yaml"] = Data((Self.managedHeader + (try Yams.dump(object: ["patch": patch]))).utf8)
     }
     return files
@@ -231,6 +238,14 @@ struct QingTypeSettings: Codable, Equatable {
         previous[name] = contents
       }
     }
+    // Rime treats source timestamps as cache keys. Rewriting a shared patch
+    // with identical content invalidates the compiled indexes of its dependents.
+    let changed = files.keys.filter { name in
+      if files[name] != previous[name] { return true }
+      let url = directory.appendingPathComponent(name)
+      return (try? url.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) == true
+    }.sorted()
+    guard !changed.isEmpty else { return }
     // Save a recovery copy of the last configuration before changing it.
     if !previous.isEmpty {
       let backup = directory.appendingPathComponent("backups/\(UUID().uuidString)", isDirectory: true)
@@ -239,7 +254,7 @@ struct QingTypeSettings: Codable, Equatable {
     }
     var written: [String] = []
     do {
-      for name in files.keys.sorted() {
+      for name in changed {
         try files[name]!.write(to: directory.appendingPathComponent(name), options: .atomic)
         written.append(name)
       }

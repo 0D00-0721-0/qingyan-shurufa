@@ -14,6 +14,7 @@ struct QingTypeRelease: Decodable {
     var browser_download_url: URL
     var size: Int64
     var digest: String?
+    var updated_at: String? = nil
     func validate(repository: String, limit: Int64) throws -> String {
       guard size > 0, size <= limit, browser_download_url.scheme == "https",
             browser_download_url.host == "github.com",

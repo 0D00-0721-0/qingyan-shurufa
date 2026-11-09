@@ -41,6 +41,8 @@ assert outer['CFBundleIdentifier'] == 'org.qingtype.app'
 assert inner['CFBundleIdentifier'] == 'org.qingtype.inputmethod.QingType'
 assert outer['CFBundleShortVersionString'] == inner['CFBundleShortVersionString']
 assert outer['LSMinimumSystemVersion'] == inner['LSMinimumSystemVersion'] == '14.0'
+assert outer.get('LSUIElement') is True, 'Installed settings must stay out of the Dock'
+assert info(settings).get('LSUIElement') is True, 'Fallback settings must stay out of the Dock'
 assert inner['InputMethodConnectionName'] == inner['CFBundleIdentifier'] + '_Connection'
 assert not list(app.rglob('*.gram')), 'Optional models must not be bundled'
 assert not list(app.rglob('*.userdb')), 'User learning must not be bundled'

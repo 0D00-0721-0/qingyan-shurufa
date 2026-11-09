@@ -4,6 +4,56 @@ Environment: Apple Silicon, macOS 27.0.1, Swift 6.4. The machine now has Xcode
 27.1 selected at `/Applications/Xcode.app/Contents/Developer`. The initial
 prototype was built earlier with Command Line Tools alone.
 
+## Fuzzy pinyin — 2026-11-02
+
+Ten independently selectable bidirectional pairs are available in the native input
+settings. The master defaults to off, preserves selections when disabled and safely
+migrates legacy settings. Ordered Rime list insertion retains the original algebra;
+the simplified schema inherits the parent's fuzzy rules exactly once. an/ang does
+not implicitly enable ian/iang or uan/uang. Database and prism names stay stable.
+Existing configuration ownership checks, backup and verified rollback are reused.
+
+The standard arm64 build and complete `scripts/test.sh` pass with the required full
+Ice fixture and no FAIL/SKIP. The settings suite adds 40 migration, selection,
+deterministic encoding, manual-file protection and failed-deployment recovery checks.
+The final dedicated engine suite passes 436 checks across simplified/traditional
+Luna, Xiaohe and Ice: both directions, exact spellings, single characters, combined
+rules, abbreviation, restart, immediate disable, independent an/ang, quick phrases,
+Ice Lua/English and actual fuzzy selection/commit. Complete compiled algebra is
+compared before/on/off; real learned entries, weights and ranking survive toggles.
+
+With an isolated imported Wanxiang simplified model, 448 dedicated checks pass;
+engine logs confirm loading the model. The three simplified schemes retain the
+selected grammar language and corresponding prism; traditional Luna runs without
+that incompatible simplified model. Existing factory (95), Ice (93), candidate (73)
+and learning (65) checks also pass in the complete regression.
+
+The actual SwiftUI section was mounted with isolated in-memory preferences for
+visual and accessibility inspection. All ten checkboxes, selection count and
+master disable/re-enable behavior were verified. The local development DMG passes
+the standard packaging and DistributionTests checks, including strict ad hoc
+signature verification, mounted content identity, optional/private data exclusion
+and 95 packaged offline factory checks. Evidence is ignored under
+`build/fuzzy-pinyin/`. No new CI or Release has been created. Real keyboard use,
+other hosts and macOS 14/15/26 remain unverified for this feature. See
+[usage and test commands](docs/FUZZY_PINYIN.md).
+
+The subsequent authorized replacement installed both the normal application and
+input service. An exclusive production data lock covered backup, replacement and
+pre-start verification: all 1,263 user files/links matched the verified offline
+copy before startup, with no manual configuration redeployment. Prior program ZIPs were
+actually extracted and matched their original content and signatures. Eight build
+records, complete app/input contents, strict signatures and the running image UUID
+match the fixed development DMG (workingTreeClean=false is retained and explicitly
+not treated as a clean release build). The new service starts from its installed
+path, PID 69459, and remains the same instance after opening the normal settings
+application. The actual input page shows fuzzy pinyin off with zero selections;
+the existing Ice scheme, model and input source selection remain. No Save/Apply
+was performed. After startup, user.yaml changed only in Rime's engine-maintained
+last_build_time field; user settings and protected asset hashes match. Private installation evidence is ignored under
+`build/fuzzy-pinyin/live-replacement/`. This establishes installation and settings
+UI results, not real keyboard input acceptance.
+
 ## Caps Lock raw-pinyin commit — 2026-10-30
 
 The previous generated configuration inherited `Caps_Lock: clear`, reproduced as

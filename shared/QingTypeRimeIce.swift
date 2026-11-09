@@ -11,14 +11,19 @@ struct RimeIceAsset: Codable, Equatable {
   var installedAt = Date()
 }
 
-struct RimeIceInstallation {
-  var asset: RimeIceAsset
-  var backup: URL
+struct RimeIceRollbackRecord: Codable, Equatable {
+  var previousManifest: Data?
+  var installedFiles: [RimeIceFile]
   /// Files that existed before this install and were overwritten.
   var replaced: Set<String>
   /// Files this install created; only these may be removed by a rollback.
   var created: Set<String>
-  var previousManifest: Data?
+}
+
+struct RimeIceInstallation {
+  var asset: RimeIceAsset
+  var backup: URL
+  var rollback: RimeIceRollbackRecord
 }
 
 struct RimeIceRecoveryError: LocalizedError {
@@ -30,6 +35,7 @@ enum QingTypeRimeIce {
   static let manifestName = "scheme-packages/rime-ice.json"
   static let dictionaryName = "qingtype_ice_main"
   static let licensePath = "scheme-packages/rime-ice-LICENSE.txt"
+  static let rollbackRecordName = "rollback.json"
   private static let schemas = ["rime_ice", "melt_eng", "radical_pinyin"]
   private static let resourceDirectories = Set(["cn_dicts", "en_dicts", "lua", "opencc"])
   private static let rootFiles = Set(["rime_ice.schema.yaml", "melt_eng.schema.yaml", "radical_pinyin.schema.yaml", "rime_ice.dict.yaml", "melt_eng.dict.yaml", "radical_pinyin.dict.yaml", "symbols_v.yaml", "symbols_caps_v.yaml", "qingtype_ice_defaults.yaml"])
@@ -221,6 +227,8 @@ enum QingTypeRimeIce {
     for name in files.map(\.path) + [manifestName, "backups"] {
       _ = try destination(name, in: directory)
     }
+    var changed: [RimeIceFile] = []
+    var replaced = Set<String>(), created = Set<String>()
     for file in files {
       let target = directory.appendingPathComponent(file.path)
       if manager.fileExists(atPath: target.path) {
@@ -228,28 +236,36 @@ enum QingTypeRimeIce {
               (try target.resourceValues(forKeys: [.isSymbolicLinkKey])).isSymbolicLink != true else { throw SettingsError.invalid("目标资源路径包含链接：\(file.path)") }
         let current = try QingTypeContent.digest(of: target)
         guard current == file.sha256 || current == oldHashes[file.path] else { throw SettingsError.invalid("\(file.path) 已存在且不属于当前托管版本，保留原文件；请先备份并处理冲突。") }
+        if current == file.sha256 { continue }
+        replaced.insert(file.path)
+      } else {
+        created.insert(file.path)
       }
+      changed.append(file)
     }
     let backup = directory.appendingPathComponent("backups/rime-ice-\(UUID())", isDirectory: true)
-    try manager.createDirectory(at: backup, withIntermediateDirectories: true)
     let manifestURL = directory.appendingPathComponent(manifestName)
     let previousManifest = manager.fileExists(atPath: manifestURL.path) ? try Data(contentsOf: manifestURL) : nil
-    var replaced = Set<String>(), created = Set<String>(), written: [String] = []
+    let record = RimeIceRollbackRecord(previousManifest: previousManifest, installedFiles: files, replaced: replaced, created: created)
+    var written: [String] = []
     do {
-      for file in files {
-        let target = directory.appendingPathComponent(file.path)
-        // A repeat install must not rewrite bytes that already match: it keeps
-        // the backup small and avoids touching files the engine is not using.
-        if manager.fileExists(atPath: target.path), (try? QingTypeContent.digest(of: target)) == file.sha256 {
-          continue
-        }
-        if manager.fileExists(atPath: target.path) {
-          let saved = backup.appendingPathComponent(file.path)
+      if previousManifest != nil && !changed.isEmpty {
+        try manager.createDirectory(at: backup, withIntermediateDirectories: true)
+        for path in replaced {
+          let saved = backup.appendingPathComponent(path)
           try manager.createDirectory(at: saved.deletingLastPathComponent(), withIntermediateDirectories: true)
-          try manager.copyItem(at: target, to: saved)
-          replaced.insert(file.path)
-        } else {
-          created.insert(file.path)
+          try manager.copyItem(at: destination(path, in: directory), to: saved)
+          guard try QingTypeContent.digest(of: saved) == oldHashes[path] else {
+            throw SettingsError.invalid("雾凇文件在备份期间被修改：\(path)。")
+          }
+        }
+        try JSONEncoder().encode(record).write(to: backup.appendingPathComponent(rollbackRecordName), options: .atomic)
+      }
+      for file in changed {
+        let target = try destination(file.path, in: directory)
+        let current = manager.fileExists(atPath: target.path) ? try QingTypeContent.digest(of: target) : nil
+        guard current == (replaced.contains(file.path) ? oldHashes[file.path] : nil) else {
+          throw SettingsError.invalid("雾凇文件在安装期间被修改：\(file.path)。")
         }
         try manager.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
         try Data(contentsOf: stage.appendingPathComponent(file.path)).write(to: target, options: .atomic)
@@ -272,28 +288,51 @@ enum QingTypeRimeIce {
       }
       throw error
     }
-    return RimeIceInstallation(asset: asset, backup: backup, replaced: replaced, created: created,
-                               previousManifest: previousManifest)
+    return RimeIceInstallation(asset: asset, backup: backup, rollback: record)
+  }
+
+  /// Promote a backup only after deployment and verification of the old resource set.
+  static func retainRollbackPoint(_ installation: RimeIceInstallation, in directory: URL) throws {
+    let rollback = installation.rollback
+    guard let manifest = rollback.previousManifest, !rollback.replaced.isEmpty || !rollback.created.isEmpty else { return }
+    let record = try Data(contentsOf: destination(rollbackRecordName, in: installation.backup))
+    guard try JSONDecoder().decode(RimeIceRollbackRecord.self, from: record) == rollback else {
+      throw SettingsError.invalid("雾凇回退清单校验失败。")
+    }
+    let previous = try JSONDecoder().decode(RimeIceAsset.self, from: manifest)
+    try validate(previous)
+    for file in previous.files {
+      let root = rollback.replaced.contains(file.path) ? installation.backup : directory
+      let url = try destination(file.path, in: root)
+      let values = try url.resourceValues(forKeys: [.isRegularFileKey])
+      guard !rollback.created.contains(file.path), values.isRegularFile == true,
+            try QingTypeContent.digest(of: url) == file.sha256 else {
+        throw SettingsError.invalid("雾凇旧版资源校验失败：\(file.path)。")
+      }
+    }
+    try QingTypeBackupRetention.markOwned(installation.backup)
+    _ = try QingTypeBackupRetention.prune(in: installation.backup.deletingLastPathComponent(), prefixes: ["rime-ice-"],
+      keeping: 1, preserving: installation.backup)
   }
 
   // A failed activation restores package resources as well as generated settings.
   // Refuse to discard edits made by another program during deployment.
   static func rollback(_ installation: RimeIceInstallation, in directory: URL) throws {
     let manager = FileManager.default
-    for file in installation.asset.files {
+    for file in installation.rollback.installedFiles {
       let current = try QingTypeContent.digest(of: destination(file.path, in: directory))
       guard current == file.sha256 else { throw SettingsError.invalid("\(file.path) 在安装期间被修改，未覆盖它。备份：\(installation.backup.path)") }
     }
-    for file in installation.asset.files.reversed() {
+    for file in installation.rollback.installedFiles.reversed() {
       let target = try destination(file.path, in: directory)
-      if installation.replaced.contains(file.path) {
+      if installation.rollback.replaced.contains(file.path) {
         try Data(contentsOf: installation.backup.appendingPathComponent(file.path)).write(to: target, options: .atomic)
-      } else if installation.created.contains(file.path) {
+      } else if installation.rollback.created.contains(file.path) {
         try manager.removeItem(at: target)
       }
     }
     let manifest = try destination(manifestName, in: directory)
-    if let previous = installation.previousManifest { try previous.write(to: manifest, options: .atomic) }
+    if let previous = installation.rollback.previousManifest { try previous.write(to: manifest, options: .atomic) }
     else { try manager.removeItem(at: manifest) }
   }
 }

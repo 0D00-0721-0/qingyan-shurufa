@@ -24,6 +24,17 @@ struct SettingsSafetyTests {
     let restored = try QingTypeSettings.load(from: root)
     try expect(restored == settings, "settings and Unicode phrases survive restart")
 
+    let defaultsURL = root.appendingPathComponent("default.custom.yaml")
+    try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSince1970: 1_700_000_000)],
+                                          ofItemAtPath: defaultsURL.path)
+    let previousDate = try FileManager.default.attributesOfItem(atPath: defaultsURL.path)[.modificationDate] as? Date
+    settings.phrases[0].text = "继续加油呀"
+    try settings.save(to: root)
+    let updatedDate = try FileManager.default.attributesOfItem(atPath: defaultsURL.path)[.modificationDate] as? Date
+    try expect(previousDate != nil && updatedDate == previousDate, "a phrase edit preserves the timestamp of unchanged shared Rime defaults")
+    let updatedPhrase = try String(contentsOf: root.appendingPathComponent("custom_phrase.txt"), encoding: .utf8)
+    try expect(updatedPhrase.contains("继续加油呀\tjj\t"), "a phrase edit still writes the changed phrase table")
+
     for useShift in [true, false] {
       var configured = settings
       configured.useShift = useShift

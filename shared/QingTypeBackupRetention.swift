@@ -64,7 +64,21 @@ enum QingTypeBackupRetention {
     return current == manifest.entries
   }
 
-  static func prune(in root: URL, prefixes: [String], keeping: Int) throws -> [URL] {
+  static func unmarkedBackups(in root: URL, prefix: String) throws -> [URL] {
+    let manager = FileManager.default
+    guard (try? root.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) != true else {
+      throw SettingsError.invalid("备份目录包含符号链接。")
+    }
+    guard manager.fileExists(atPath: root.path) else { return [] }
+    return try manager.contentsOfDirectory(at: root, includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey]).filter { url in
+      guard ownedName(url.lastPathComponent, prefixes: [prefix]),
+            let values = try? url.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey]),
+            values.isDirectory == true, values.isSymbolicLink != true else { return false }
+      return !manager.fileExists(atPath: url.appendingPathComponent(markerName).path)
+    }
+  }
+
+  static func prune(in root: URL, prefixes: [String], keeping: Int, preserving: URL? = nil) throws -> [URL] {
     guard keeping >= 1 else { throw SettingsError.invalid("备份保留数量必须至少为 1。") }
     let manager = FileManager.default
     guard (try? root.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) != true else {
@@ -83,6 +97,11 @@ enum QingTypeBackupRetention {
       candidates.append((url, values?.contentModificationDate ?? .distantPast))
     }
     candidates.sort { $0.1 > $1.1 }
+    if let preserving {
+      guard let index = candidates.firstIndex(where: { $0.0.standardizedFileURL.path == preserving.standardizedFileURL.path }) else { return [] }
+      let retained = candidates.remove(at: index)
+      candidates.insert(retained, at: 0)
+    }
     var removed: [URL] = []
     for (url, _) in candidates.dropFirst(keeping) {
       do { try manager.removeItem(at: url); removed.append(url) }

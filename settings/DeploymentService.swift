@@ -35,8 +35,10 @@ enum DeploymentService {
   }
 
   @MainActor
-  static func installRimeIce(from source: URL, saved: QingTypeSettings, provenance: String, sha256: String?, activate: Bool = false) async throws -> (QingTypeSettings, QingTypeDeploymentReport) {
+  static func installRimeIce(from source: URL, saved: QingTypeSettings, provenance: String, sha256: String?, activate: Bool = false) async throws -> (settings: QingTypeSettings, report: QingTypeDeploymentReport, backupWarning: String?) {
     let directory = QingTypePaths.userDirectory
+    let lock = try QingTypeInstallLock(destination: InstallationService.installedURL)
+    defer { withExtendedLifetime(lock) {} }
     guard try QingTypeSettings.load() == saved else { throw SettingsError.invalid("设置文件已被其他程序修改，请重开设置后再安装。") }
     let running = NSRunningApplication.runningApplications(withBundleIdentifier: "org.qingtype.inputmethod.QingType")
     for app in running { app.terminate() }
@@ -68,10 +70,14 @@ enum DeploymentService {
       let report = try await QingTypeConfigurationApply.apply(updated, to: directory) {
         try await runWorker(appURL: inputMethodURL())
       }
-      try? QingTypeBackupRetention.markOwned(installation.backup)
-      _ = try? QingTypeBackupRetention.prune(in: directory.appendingPathComponent("backups"),
-                                             prefixes: ["rime-ice-"], keeping: 2)
-      return (updated, report)
+      do {
+        try await Task.detached(priority: .utility) {
+          try QingTypeRimeIce.retainRollbackPoint(installation, in: directory)
+        }.value
+        return (updated, report, nil)
+      } catch {
+        return (updated, report, "雾凇已部署，但新回退备份校验失败，较早的备份仍保留。\(error.localizedDescription)")
+      }
     } catch {
       let reason = error.localizedDescription
       restart = false
