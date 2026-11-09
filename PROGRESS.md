@@ -2,10 +2,11 @@
 
 更新时间：2026-11-09（Asia/Shanghai）。目标/边界见 AGENTS.md，验收标准见 ROADMAP.md。
 
-## 0.6.6 预览版准备（2026-11-09）
+## 0.6.6 预览版发布（2026-11-09）
 
 - `v0.6.6-preview.1` 固定模糊拼音、配置保存提速、隐藏设置窗口的 Dock 图标，以及雾凇更新确认和回退点的本地实现。版本号和标签检查通过。
 - GitHub 已停用 macOS 14 托管运行器，原发布任务的 macOS 14 作业被取消。持续集成与发布改用 macOS 15、26 托管运行器，包的最低目标仍为 macOS 14.0，macOS 14 实机验收待补。发布工作流从 `main` 读取，构建仍检出原标签。
+- 本机构建、完整回归与标签对应的 DMG 验证通过。[源码 CI](https://github.com/0D00-0721-0/qingyan-shurufa/actions/runs/42609873052) 和 [发布工作流](https://github.com/0D00-0721-0/qingyan-shurufa/actions/runs/42609880323) 的 macOS 15、26 构建、回归与打包均通过，公开预览发布完成。下载复验核对三个资产的摘要、源码归档与标签内容，以及 DMG 的干净构建来源、临时签名和 95 项包内离线引擎检查。公开 DMG SHA-256 为 `b6e9996e2fa9b0e006bbf3773e5fa0f31600899e6aa53d090ed1e4ed99fe439d`。公开包的实际安装和跨应用输入待验。
 
 ## 雾凇更新确认与回退备份（2026-11-08）
 
@@ -339,7 +340,7 @@
 
 ## 当前版本与支持范围
 
-本机已安装 **0.6.5 本地构建**；最新公开预览为 **0.6.5**；仅支持 M 芯片 Mac，macOS 14+。
+本机已安装 **0.6.5 本地构建**；最新公开预览为 [v0.6.6-preview.1](https://github.com/0D00-0721-0/qingyan-shurufa/releases/tag/v0.6.6-preview.1)，支持 M 芯片 Mac，macOS 14+。
 新发布 [v0.6.4-preview.1](https://github.com/0D00-0721-0/qingtype/releases/tag/v0.6.4-preview.1)，tag 指向 88db9e09a5b364bf2389ad709a8a9534177d0a84；公开 DMG 17,111,132 字节、SHA-256 000349a8944f14d10084737bac894dc7909ce84a33d904833cddf99776b8adc6，源码 tar.gz 627,800 字节、SHA-256 a2865393eec2931e9ffbbe681436d644f25b3ab9d9a958f4b7f2363a84d2cc24。
 上一版 [v0.6.3-preview.1](https://github.com/0D00-0721-0/qingtype/releases/tag/v0.6.3-preview.1)，tag 指向 8eac967d8e571dd81a9e15dc562df014cf55b0d5，DMG SHA-256 20eba9ef059da565869c4c2d7c6fefccc7bf4e96a1cc6c7a12039418816d1ec7；该包升级输入法时的失败原因与修复见前文。
 上一版 [v0.6.2-preview.1](https://github.com/0D00-0721-0/qingtype/releases/tag/v0.6.2-preview.1)，tag 为 0c3f156f2c44ce1b53374b72ff1f1149e51f3404。用户明确不再开发/验收 Intel，此约束已写入 AGENTS.md、构建入口和 CI。
